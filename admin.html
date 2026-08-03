@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Kairox Waitlist Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{--ink:#1d1730;--muted:#726a83;--purple:#7556ff;--pink:#f45da9;--line:#e9dff3}
+    *{box-sizing:border-box}body{margin:0;font-family:'DM Sans',sans-serif;color:var(--ink);background:radial-gradient(circle at 15% 0,#eee7ff,transparent 33%),radial-gradient(circle at 100% 20%,#ffe3ee,transparent 32%),#fffafd;min-height:100vh}
+    .shell{width:min(1100px,calc(100% - 28px));margin:auto}.top{display:flex;align-items:center;justify-content:space-between;padding:28px 0}.brand{font:800 24px Manrope}.brand span{background:linear-gradient(90deg,var(--purple),var(--pink));-webkit-background-clip:text;color:transparent}.card{background:rgba(255,255,255,.82);border:1px solid rgba(255,255,255,.95);box-shadow:0 24px 70px rgba(92,62,139,.12);border-radius:28px;padding:28px;margin-bottom:28px}.login{max-width:520px;margin:12vh auto}.login h1,.dashboard h1{font:800 42px/1.05 Manrope;margin:0 0 12px}.sub{color:var(--muted);line-height:1.6}.row{display:flex;gap:12px}.row input,.search{width:100%;min-height:52px;border:1px solid var(--line);border-radius:16px;padding:0 16px;font:inherit;background:#fff;outline:none}.row input:focus,.search:focus{border-color:var(--purple);box-shadow:0 0 0 4px rgba(117,86,255,.1)}button{border:0;border-radius:16px;padding:0 20px;min-height:52px;font:700 15px inherit;cursor:pointer;background:linear-gradient(90deg,var(--purple),var(--pink));color:white}.ghost{background:white;color:var(--ink);border:1px solid var(--line)}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:22px 0}.stat{padding:20px;border-radius:20px;background:#fff;border:1px solid var(--line)}.stat strong{display:block;font:800 30px Manrope}.stat span{color:var(--muted);font-size:13px}.toolbar{display:flex;gap:12px;align-items:center;margin-bottom:16px}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:20px;background:#fff}table{width:100%;border-collapse:collapse;min-width:700px}th,td{text-align:left;padding:15px 16px;border-bottom:1px solid #f1eaf6}th{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}td{font-size:14px}.delete{min-height:36px;padding:0 12px;background:#fff0f4;color:#bb315e;border:1px solid #ffd3e1}.hidden{display:none}.message{margin-top:12px;color:#bb315e}.empty{text-align:center;padding:40px;color:var(--muted)}@media(max-width:700px){.stats{grid-template-columns:1fr}.toolbar,.row{flex-direction:column;align-items:stretch}.login h1,.dashboard h1{font-size:34px}}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="top"><div class="brand"><span>K</span> Kairox Admin</div><button id="logout" class="ghost hidden">Log out</button></header>
+
+    <section id="login" class="card login">
+      <h1>Waitlist access</h1>
+      <p class="sub">Enter the private admin password configured in Vercel.</p>
+      <form id="login-form" class="row"><input id="password" type="password" autocomplete="current-password" placeholder="Admin password" required><button type="submit">Open dashboard</button></form>
+      <p id="login-message" class="message"></p>
+    </section>
+
+    <main id="dashboard" class="dashboard hidden">
+      <div class="card">
+        <h1>Kairox waitlist</h1>
+        <p class="sub">Search signups, remove entries, or export everything as a CSV.</p>
+        <div class="stats"><div class="stat"><strong id="total">0</strong><span>Total signups</span></div><div class="stat"><strong id="today">0</strong><span>Joined today</span></div><div class="stat"><strong id="week">0</strong><span>Joined this week</span></div></div>
+        <div class="toolbar"><input id="search" class="search" type="search" placeholder="Search email or source"><button id="export" class="ghost">Export CSV</button><button id="refresh" class="ghost">Refresh</button></div>
+        <div class="table-wrap"><table><thead><tr><th>Email</th><th>Source</th><th>Joined</th><th></th></tr></thead><tbody id="rows"></tbody></table><div id="empty" class="empty hidden">No signups found.</div></div>
+      </div>
+    </main>
+  </div>
+<script>
+let password=sessionStorage.getItem('kairox_admin_password')||'';let signups=[];
+const $=id=>document.getElementById(id);
+function showDashboard(){ $('login').classList.add('hidden');$('dashboard').classList.remove('hidden');$('logout').classList.remove('hidden') }
+function showLogin(){ $('login').classList.remove('hidden');$('dashboard').classList.add('hidden');$('logout').classList.add('hidden') }
+function fmt(date){return new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'short'}).format(new Date(date))}
+function stats(){const now=new Date();const day=new Date(now.getFullYear(),now.getMonth(),now.getDate());const week=new Date(day);week.setDate(day.getDate()-6);$('total').textContent=signups.length;$('today').textContent=signups.filter(x=>new Date(x.created_at)>=day).length;$('week').textContent=signups.filter(x=>new Date(x.created_at)>=week).length}
+function render(){const q=$('search').value.trim().toLowerCase();const list=signups.filter(x=>!q||x.email.includes(q)||(x.source||'').toLowerCase().includes(q));$('rows').innerHTML=list.map(x=>`<tr><td>${escapeHtml(x.email)}</td><td>${escapeHtml(x.source||'website')}</td><td>${fmt(x.created_at)}</td><td><button class="delete" data-id="${x.id}">Delete</button></td></tr>`).join('');$('empty').classList.toggle('hidden',list.length!==0);document.querySelectorAll('.delete').forEach(b=>b.onclick=()=>removeSignup(b.dataset.id))}
+function escapeHtml(v){return String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+async function load(){const r=await fetch('/api/admin-waitlist',{headers:{Authorization:`Bearer ${password}`}});if(r.status===401){sessionStorage.removeItem('kairox_admin_password');password='';showLogin();throw new Error('Incorrect password.')}const data=await r.json();if(!r.ok)throw new Error(data.error||'Could not load signups.');signups=data.signups;showDashboard();stats();render()}
+async function removeSignup(id){if(!confirm('Delete this signup?'))return;const r=await fetch(`/api/admin-waitlist?id=${encodeURIComponent(id)}`,{method:'DELETE',headers:{Authorization:`Bearer ${password}`}});if(!r.ok)return alert('Could not delete signup.');signups=signups.filter(x=>x.id!==id);stats();render()}
+$('login-form').onsubmit=async e=>{e.preventDefault();password=$('password').value;sessionStorage.setItem('kairox_admin_password',password);$('login-message').textContent='';try{await load()}catch(err){$('login-message').textContent=err.message}};
+$('search').oninput=render;$('refresh').onclick=()=>load().catch(err=>alert(err.message));$('logout').onclick=()=>{sessionStorage.clear();password='';showLogin()};
+$('export').onclick=()=>{const lines=[['email','source','created_at'],...signups.map(x=>[x.email,x.source,x.created_at])].map(row=>row.map(v=>`"${String(v??'').replaceAll('"','""')}"`).join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([lines],{type:'text/csv'}));a.download=`kairox-waitlist-${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(a.href)};
+if(password)load().catch(()=>showLogin());
+</script>
+</body>
+</html>
